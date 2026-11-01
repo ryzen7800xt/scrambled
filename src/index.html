@@ -1,0 +1,74 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <title>Scrambled!</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+  <nav class="navbar">
+  <div class="container">
+    <a href="index.html" class="logo">Scrambled!</a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="recipes.html">Recipes</a></li>
+      <li><a href="searchpage.html" class="searchbar">Search</a></li>
+      <li><a href="profile.html" class="userProfile">Profile</a></li>
+      <li><a href="profile.html#settings" class="settings-link">Settings</a></li>
+    </ul>
+  </div>
+</nav>
+
+  <main>
+    <section class="landing-hero" aria-labelledby="landing-title">
+      <div class="landing-copy">
+        <p class="landing-eyebrow">All good foods start with a recipe!</p>
+        <h1 id="landing-title" class="splash-text">Scrambled!</h1>
+        <p class="landing-description">
+          Find your next meal, snack, treat or future recipe in Scrambled, one of the largest recipe apps made specifically for the amazing egg!
+        </p>
+        <div class="landing-actions">
+          <a class="landing-button landing-button-primary" href="recipes.html">Explore featured recipes</a>
+          <a class="landing-button landing-button-secondary" href="searchpage.html">Search</a>
+        </div>
+      </div>
+      <div class="landing-art" aria-hidden="true">
+        <div class="landing-art-glow"></div>
+        <svg class="landing-egg" viewBox="0 0 360 420" role="presentation">
+          <defs>
+            <linearGradient id="egg-shell" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#fffdf5" stop-opacity=".76"/>
+              <stop offset=".52" stop-color="#f8e9c9" stop-opacity=".42"/>
+              <stop offset="1" stop-color="#fffdf5" stop-opacity=".12"/>
+            </linearGradient>
+            <radialGradient id="egg-yolk" cx=".35" cy=".3" r=".75">
+              <stop offset="0" stop-color="#fff0a5"/>
+              <stop offset=".55" stop-color="#f8bd4c"/>
+              <stop offset="1" stop-color="#d88730"/>
+            </radialGradient>
+          </defs>
+          <ellipse class="egg-shadow" cx="184" cy="382" rx="112" ry="17"/>
+          <path class="egg-shell-shape"
+                d="M180 31C111 31 54 174 54 264c0 84 54 137 126 137s126-53 126-137C306 174 249 31 180 31Z"
+                fill="url(#egg-shell)" stroke="#fff9e9" stroke-opacity=".5" stroke-width="2"/>
+          <path class="egg-highlight" d="M126 93c-31 45-47 99-50 150" fill="none"
+                stroke="#fff" stroke-linecap="round" stroke-opacity=".64" stroke-width="8"/>
+          <circle class="egg-yolk" cx="183" cy="260" r="67" fill="url(#egg-yolk)"/>
+          <ellipse cx="160" cy="236" rx="19" ry="11" fill="#fff8d5" fill-opacity=".72"
+                   transform="rotate(-34 160 236)"/>
+        </svg>
+        <span class="landing-art-caption">Smells Like Dinner!</span>
+      </div>
+    </section>
+    <!--Scrapped About gonna just turn it into a owner text thingy idk-->
+    <section class="landing-intro" aria-label="About Scrambled">
+      <p class="landing-intro-label">Licensed under the MIT License</p>
+      <p>You are free to distribute, and modify this.</p>
+    </section>
+  </main>
+        <script src="script.js?v=2">
+        </script>
+        <script src="accessibility.js"></script>
+    </body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile and inbox - Scrambled!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar" aria-label="Main navigation">
+    <div class="container">
+      <a href="index.html" class="logo">Scrambled!</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="recipes.html">Recipes</a></li>
+        <li><a href="searchpage.html" class="searchbar">Search</a></li>
+        <li><a href="profile.html" class="userProfile active" aria-current="page">Profile &amp; inbox</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-shell">
+    <section class="page-card" aria-labelledby="inbox-title">
+      <header class="section-intro">
+        <h1 id="inbox-title">Your inbox</h1>
+        <p>Helpful account updates stay here. Scrambled! does not send recipe notifications by email.</p>
+      </header>
+      <p id="inbox-status" class="recipe-status" role="status" aria-live="polite">Checking your account…</p>
+      <div id="inbox-list" class="inbox-list" aria-label="Inbox messages"></div>
+    </section>
+
+    <section class="page-card accessibility-card" aria-labelledby="accessibility-title">
+      <header class="section-intro">
+        <h2 id="accessibility-title">Accessibility preferences</h2>
+      </header>
+      <p>Choose display options that make Scrambled! easier to use. Your choices are saved in this browser.</p>
+      <div class="accessibility-options">
+        <label><input type="checkbox" data-accessibility-setting="bold"> <strong>Bold text</strong> throughout the site</label>
+        <label><input type="checkbox" data-accessibility-setting="large"> Larger text</label>
+        <label><input type="checkbox" data-accessibility-setting="contrast"> High-contrast colors</label>
+        <label><input type="checkbox" data-accessibility-setting="motion"> Reduce animations and motion</label>
+      </div>
+      <p id="accessibility-status" class="recipe-status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script>
+    const inboxStatus = document.querySelector('#inbox-status');
+    const inboxList = document.querySelector('#inbox-list');
+
+    async function readError(response) {
+      try {
+        const body = await response.json();
+        return body.message || body.error || `Request failed (${response.status}).`;
+      } catch {
+        return `Request failed (${response.status}).`;
+      }
+    }
+
+    async function loadInbox() {
+      try {
+        const response = await fetch('/api/inbox');
+        if (response.status === 401) {
+          inboxStatus.textContent = 'Sign in on the Recipes page to see your private inbox.';
+          return;
+        }
+        if (!response.ok) throw new Error(await readError(response));
+
+        const messages = await response.json();
+        inboxStatus.textContent = messages.length
+          ? `${messages.filter(message => !message.read).length} unread message(s).`
+          : 'Your inbox is empty.';
+        messages.forEach(message => {
+          const item = document.createElement('article');
+          item.className = `inbox-message${message.read ? '' : ' unread'}`;
+          const text = document.createElement('p');
+          text.textContent = message.message;
+          const date = document.createElement('time');
+          date.dateTime = message.createdAt;
+          date.textContent = new Date(message.createdAt).toLocaleString();
+          item.append(text, date);
+          if (!message.read) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = 'Mark as read';
+            button.addEventListener('click', async () => {
+              button.disabled = true;
+              try {
+                const update = await fetch(`/api/inbox/${message.id}/read`, { method: 'POST' });
+                if (!update.ok) throw new Error(await readError(update));
+                message.read = true;
+                item.classList.remove('unread');
+                button.remove();
+                inboxStatus.textContent = `${messages.filter(entry => !entry.read).length} unread message(s).`;
+              } catch (error) {
+                button.disabled = false;
+                inboxStatus.textContent = error.message;
+              }
+            });
+            item.append(button);
+          }
+          inboxList.append(item);
+        });
+      } catch (error) {
+        inboxStatus.textContent = `Could not load your inbox: ${error.message}`;
+        inboxStatus.classList.add('recipe-error');
+      }
+    }
+
+    loadInbox();
+  </script>
+  <script src="accessibility.js"></script>
+</body>
+</html>

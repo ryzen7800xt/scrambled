@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search - Scrambled!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="logo">Scrambled!</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="recipes.html">Recipes</a></li>
+        <li><a href="searchpage.html" class="searchbar active">Search</a></li>
+        <li><a href="profile.html" class="userProfile">Profile &amp; inbox</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="page-shell">
+    <header class="page-intro">
+      <h1>Find a recipe</h1>
+      <p>Search recipe names, ingredients, or instructions.</p>
+    </header>
+    <section class="page-card search-results-panel">
+      <form id="search-form" role="search" class="search-form">
+        <label for="recipe-search">Search recipes</label>
+        <div class="search-controls">
+          <input id="recipe-search" type="search" name="q" autocomplete="off"
+                 placeholder="Try “bacon” or “pancakes”">
+          <button type="submit">Search</button>
+          <button id="clear-search" type="button" class="secondary-button">Clear</button>
+        </div>
+      </form>
+      <p id="search-status" class="recipe-status" role="status" aria-live="polite">Loading recipes…</p>
+      <section id="search-results" class="recipe-grid" aria-label="Recipe search results"></section>
+    </section>
+  </main>
+  <script>
+    const searchForm = document.querySelector('#search-form');
+    const searchInput = document.querySelector('#recipe-search');
+    const searchStatus = document.querySelector('#search-status');
+    const searchResults = document.querySelector('#search-results');
+    let recipes = [];
+
+    function renderResults() {
+      const query = searchInput.value.trim().toLocaleLowerCase();
+      const matches = recipes.filter(recipe =>
+        `${recipe.name} ${recipe.realRecipe}`.toLocaleLowerCase().includes(query)
+      );
+      searchResults.replaceChildren();
+
+      if (!matches.length) {
+        const empty = document.createElement('p');
+        empty.textContent = query ? 'No matching recipes. Try different words.' : 'No recipes are available yet.';
+        searchResults.append(empty);
+        searchStatus.textContent = query ? 'No recipes found.' : '0 recipes found.';
+        return;
+      }
+
+      matches.forEach(recipe => {
+        const card = document.createElement('article');
+        card.className = 'recipe-card';
+        const title = document.createElement('h2');
+        title.textContent = recipe.name;
+        const details = document.createElement('p');
+        details.className = 'recipe-details';
+        details.textContent = recipe.realRecipe;
+        card.append(title, details);
+        searchResults.append(card);
+      });
+      searchStatus.textContent = `${matches.length} ${matches.length === 1 ? 'recipe' : 'recipes'} found.`;
+    }
+
+    async function loadRecipes() {
+      try {
+        const response = await fetch('/api/recipes');
+        if (!response.ok) throw new Error(`Could not load recipes (${response.status}).`);
+        recipes = await response.json();
+        renderResults();
+      } catch (error) {
+        searchStatus.textContent = `${error.message} Please refresh and try again.`;
+        searchStatus.classList.add('recipe-error');
+      }
+    }
+
+    searchForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const url = new URL(window.location.href);
+      const query = searchInput.value.trim();
+      if (query) url.searchParams.set('q', query);
+      else url.searchParams.delete('q');
+      window.history.replaceState(null, '', url);
+      renderResults();
+    });
+    searchInput.addEventListener('input', renderResults);
+    document.querySelector('#clear-search').addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.focus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('q');
+      window.history.replaceState(null, '', url);
+      renderResults();
+    });
+    searchInput.value = new URLSearchParams(window.location.search).get('q') || '';
+    loadRecipes();
+  </script>
+  <script src="accessibility.js"></script>
+</body>
+</html>

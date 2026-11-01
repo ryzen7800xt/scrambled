@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipes - Scrambled!</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar" aria-label="Main navigation">
+    <div class="container">
+      <a href="index.html" class="logo">Scrambled!</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="recipes.html" aria-current="page">Recipes</a></li>
+        <li><a href="searchpage.html" class="searchbar">Search</a></li>
+        <li><a href="profile.html" class="userProfile">Profile &amp; inbox</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="recipes-page">
+    <header class="page-intro">
+      <h1>Recipes</h1>
+      <p>Browse the recipe box or share one of your own. You can search by name, ingredient, or instruction.</p>
+    </header>
+    <section class="page-card recipe-browser">
+      <label for="recipe-search">Search recipes</label>
+      <input id="recipe-search" type="search" placeholder="Search by name or ingredient">
+      <p id="recipe-status" class="recipe-status" role="status" aria-live="polite">Loading recipes…</p>
+      <section id="recipe-list" class="recipe-grid" aria-label="Recipes"></section>
+    </section>
+
+    <section class="share-section page-card" aria-labelledby="share-title">
+      <h2 id="share-title">Share a recipe</h2>
+      <p id="recipe-auth-note">Create an account or sign in before adding a recipe.</p>
+
+      <div id="auth-panel" class="auth-panel">
+        <div class="auth-mode" role="group" aria-label="Account action">
+          <button type="button" id="show-login" aria-pressed="true">Sign in</button>
+          <button type="button" id="show-register" class="secondary-button" aria-pressed="false">Create account</button>
+        </div>
+        <form id="auth-form" class="recipe-form">
+          <label for="account-email">Email address</label>
+          <input id="account-email" name="email" type="email" autocomplete="email"
+                 maxlength="254" required>
+          <div id="username-field" hidden>
+            <label for="account-username">Username</label>
+            <input id="account-username" name="username" autocomplete="username"
+                   minlength="3" maxlength="30" pattern="[-A-Za-z0-9._]{3,30}">
+          </div>
+          <label for="account-password">Password</label>
+          <input id="account-password" name="password" type="password"
+                 autocomplete="current-password" minlength="12" maxlength="72" required>
+          <p id="password-hint" class="form-hint">Use the password you registered with.</p>
+          <button id="auth-submit" type="submit">Sign in</button>
+        </form>
+        <p id="auth-status" class="recipe-status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div id="account-panel" class="account-panel" hidden>
+        <p id="signed-in-as"></p>
+        <a href="profile.html">Open your inbox</a>
+        <button id="sign-out" type="button" class="secondary-button">Sign out</button>
+      </div>
+
+      <form id="recipe-form" class="recipe-form" hidden>
+        <label for="recipe-name">Recipe name</label>
+        <input id="recipe-name" name="name" maxlength="120" required>
+        <label for="recipe-details">Ingredients and instructions</label>
+        <textarea id="recipe-details" name="realRecipe" required></textarea>
+        <button type="submit">Add recipe</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const recipeList = document.querySelector('#recipe-list');
+    const statusElement = document.querySelector('#recipe-status');
+    const searchInput = document.querySelector('#recipe-search');
+    const recipeForm = document.querySelector('#recipe-form');
+    const authForm = document.querySelector('#auth-form');
+    const authStatus = document.querySelector('#auth-status');
+    const authPanel = document.querySelector('#auth-panel');
+    const accountPanel = document.querySelector('#account-panel');
+    const passwordInput = document.querySelector('#account-password');
+    let recipes = [];
+    let authMode = 'login';
+
+    async function responseError(response) {
+      try {
+        const body = await response.json();
+        return body.message || body.error || `Request failed (${response.status}).`;
+      } catch {
+        return `Request failed (${response.status}).`;
+      }
+    }
+
+    function renderRecipes() {
+      const query = searchInput.value.trim().toLocaleLowerCase();
+      const matches = recipes.filter(recipe =>
+        `${recipe.name} ${recipe.realRecipe}`.toLocaleLowerCase().includes(query)
+      );
+      recipeList.replaceChildren();
+
+      if (!matches.length) {
+        const empty = document.createElement('p');
+        empty.textContent = query ? 'No matching recipes. Try another search.' : 'No recipes yet. Add one below.';
+        recipeList.append(empty);
+        return;
+      }
+
+      for (const recipe of matches) {
+        const card = document.createElement('article');
+        card.className = 'recipe-card';
+        const title = document.createElement('h2');
+        title.textContent = recipe.name;
+        const details = document.createElement('p');
+        details.className = 'recipe-details';
+        details.textContent = recipe.realRecipe;
+        const actions = document.createElement('div');
+        actions.className = 'recipe-actions';
+        actions.append(
+          voteButton(recipe, 'upvote', `♥ ${recipe.upvotes ?? 0}`),
+          voteButton(recipe, 'downvote', `Not for me ${recipe.downvotes ?? 0}`)
+        );
+        card.append(title, details, actions);
+        recipeList.append(card);
+      }
+    }
+
+    function voteButton(recipe, vote, label) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.setAttribute('aria-label', `${vote === 'upvote' ? 'Like' : 'Dislike'} ${recipe.name}`);
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/recipes/${recipe.id}/${vote}`, { method: 'POST' });
+          if (!response.ok) throw new Error(await responseError(response));
+          const updated = await response.json();
+          recipes = recipes.map(item => item.id === updated.id ? updated : item);
+          renderRecipes();
+        } catch (error) {
+          statusElement.textContent = `${error.message} Please try again.`;
+          statusElement.classList.add('recipe-error');
+          button.disabled = false;
+        }
+      });
+      return button;
+    }
+
+    async function loadRecipes() {
+      try {
+        const response = await fetch('/api/recipes');
+        if (!response.ok) throw new Error(await responseError(response));
+        recipes = await response.json();
+        statusElement.textContent = `${recipes.length} recipes available.`;
+        statusElement.classList.remove('recipe-error');
+        renderRecipes();
+      } catch (error) {
+        statusElement.textContent = `${error.message} Please refresh and try again.`;
+        statusElement.classList.add('recipe-error');
+      }
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      const registering = mode === 'register';
+      document.querySelector('#show-login').setAttribute('aria-pressed', String(!registering));
+      document.querySelector('#show-register').setAttribute('aria-pressed', String(registering));
+      document.querySelector('#auth-submit').textContent = registering ? 'Create account' : 'Sign in';
+      document.querySelector('#username-field').hidden = !registering;
+      authForm.elements.username.required = registering;
+      document.querySelector('#account-email').autocomplete = 'email';
+      document.querySelector('#account-email').placeholder = 'you@example.com';
+      document.querySelector('#password-hint').textContent = registering
+        ? 'Use at least 12 characters. Sign in with this email and your password.'
+        : 'Enter the email address and password you registered with.';
+      passwordInput.autocomplete = registering ? 'new-password' : 'current-password';
+      passwordInput.minLength = registering ? 12 : 1;
+      authForm.elements.email.value = '';
+      authForm.elements.username.value = '';
+      passwordInput.value = '';
+      authStatus.textContent = '';
+    }
+
+    function showAccount(user) {
+      authPanel.hidden = true;
+      accountPanel.hidden = false;
+      recipeForm.hidden = false;
+      document.querySelector('#recipe-auth-note').textContent =
+        `Signed in as ${user.username}. Your recipe will be linked to your account.`;
+      document.querySelector('#signed-in-as').textContent = `Signed in as ${user.username}.`;
+    }
+
+    async function checkSession() {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.status === 401) return;
+        if (!response.ok) throw new Error(await responseError(response));
+        showAccount(await response.json());
+      } catch (error) {
+        authStatus.textContent = `Could not check your account: ${error.message}`;
+        authStatus.classList.add('recipe-error');
+      }
+    }
+
+    document.querySelector('#show-login').addEventListener('click', () => setAuthMode('login'));
+    document.querySelector('#show-register').addEventListener('click', () => setAuthMode('register'));
+    searchInput.addEventListener('input', renderRecipes);
+
+    authForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submit = document.querySelector('#auth-submit');
+      submit.disabled = true;
+      authStatus.textContent = '';
+      try {
+        const response = await fetch(`/api/auth/${authMode === 'register' ? 'register' : 'login'}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: authForm.elements.email.value.trim(),
+            username: authForm.elements.username.value.trim(),
+            password: passwordInput.value
+          })
+        });
+        if (!response.ok) throw new Error(await responseError(response));
+        showAccount(await response.json());
+        authForm.reset();
+      } catch (error) {
+        authStatus.textContent = error.message;
+        authStatus.classList.add('recipe-error');
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    document.querySelector('#sign-out').addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        if (!response.ok) throw new Error(await responseError(response));
+        accountPanel.hidden = true;
+        recipeForm.hidden = true;
+        authPanel.hidden = false;
+        document.querySelector('#recipe-auth-note').textContent =
+          'Create an account or sign in before adding a recipe.';
+        authStatus.textContent = 'You have signed out.';
+      } catch (error) {
+        authStatus.textContent = error.message;
+        authStatus.classList.add('recipe-error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    recipeForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = recipeForm.querySelector('button');
+      const formData = new FormData(recipeForm);
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/recipes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.get('name').trim(),
+            realRecipe: formData.get('realRecipe').trim()
+          })
+        });
+        if (!response.ok) throw new Error(await responseError(response));
+        recipes.unshift(await response.json());
+        recipeForm.reset();
+        statusElement.textContent = 'Recipe added. A confirmation is waiting in your inbox.';
+        statusElement.classList.remove('recipe-error');
+        renderRecipes();
+      } catch (error) {
+        statusElement.textContent = `${error.message} Please try again.`;
+        statusElement.classList.add('recipe-error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    setAuthMode('login');
+    loadRecipes();
+    checkSession();
+  </script>
+  <script src="accessibility.js"></script>
+</body>
+</html>
